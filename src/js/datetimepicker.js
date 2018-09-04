@@ -31,14 +31,15 @@
     .service('dateTimePickerValidator', DateTimePickerValidatorService)
     .directive('datetimepicker', DatetimepickerDirective)
 
-  DatetimepickerDirective.$inject = ['dateTimePickerConfig', 'dateTimePickerValidator']
+  DatetimepickerDirective.$inject = ['dateTimePickerConfig', 'dateTimePickerValidator', '$timeout']
 
-  function DatetimepickerDirective (defaultConfig, configurationValidator) {
+  function DatetimepickerDirective (defaultConfig, configurationValidator, $timeout) {
     var directiveDefinition = {
       bindToController: false,
       controller: DirectiveController,
       controllerAs: 'dateTimePickerController',
       replace: true,
+      link: DirectiveLink,      
       require: 'ngModel',
       restrict: 'E',
       scope: {
@@ -48,6 +49,39 @@
       templateUrl: 'templates/datetimepicker.html'
     }
 
+      DirectiveLink.$inject = ['$scope', '$element'];
+
+      function DirectiveLink($scope, $element) {
+          // Fix focus management issue with focus leaving simulated dialog
+          $element.bind('keydown', inputKeydownBind);
+          document.addEventListener("focus", documentElementFocused, true);
+
+          function documentElementFocused(evt) {
+              var d = $element[0];
+              if (!d.contains(evt.target)) {
+                  evt.stopPropagation();
+                  $element.focus();
+              }
+          }
+          function inputKeydownBind(evt) {
+              if (evt.which === 27) {
+                  evt.preventDefault();
+                  evt.stopPropagation();
+                  if ($scope.configuration.dropdownSelector) {
+                      var dd = jQuery($scope.configuration.dropdownSelector);
+                      dd.dropdown('toggle');
+                      dd.focus();
+                  }
+              }
+          }
+
+          $scope.$on('$destroy', function () {
+              $element.unbind('keydown', inputKeydownBind);
+              document.removeEventListener("focus", documentElementFocused, true);
+          });
+          // ******************** End code block *************************
+      }
+    
     DirectiveController.$inject = ['$scope', '$element', '$attrs']
 
     function DirectiveController ($scope, $element, $attrs) {
@@ -55,6 +89,7 @@
       var ngModelController = $element.controller('ngModel')
 
       var configuration = createConfiguration()
+      $scope.configuration = configuration      
       $scope.screenReader = configuration.screenReader
 
       // Behavior
@@ -118,6 +153,13 @@
           })
 
           $scope.data = result
+          // Fix focus management issue getting lost on activating elements in the control
+          $timeout(function () {
+              $scope.$apply(function () {
+                  $element.focus();
+              });
+          });
+          // End code block
         }
       }
 
