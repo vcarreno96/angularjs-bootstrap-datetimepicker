@@ -386,7 +386,10 @@
         ngModelController.$setViewValue(newDate)
 
         if (configuration.dropdownSelector) {
-          jQuery(configuration.dropdownSelector).dropdown('toggle')
+            // Fix focus management issue getting lost on activating elements in the control
+            var dd = jQuery(configuration.dropdownSelector);
+            dd.dropdown('toggle');
+            dd.focus();           
         }
 
         $scope.onSetTime({newDate: newDate, oldDate: oldDate})
